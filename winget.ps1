@@ -202,10 +202,6 @@ $bloatware = @(
 
 ### Install WinGet ###
 # Idea from this gist: https://gist.github.com/crutkas/6c2096eae387e544bd05cde246f23901
-$hasPackageManager = Get-AppxPackage -Name 'Microsoft.Winget.Source' | Select Name, Version
-$hasVCLibs = Get-AppxPackage -Name 'Microsoft.VCLibs.140.00.UWPDesktop' | Select Name, Version
-$hasXAML = Get-AppxPackage -Name 'Microsoft.UI.Xaml.2.7*' | Select Name, Version
-$hasAppInstaller = Get-AppxPackage -Name 'Microsoft.DesktopAppInstaller' | Select Name, Version
 $DesktopPath = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::Desktop)
 $errorlog = "$DesktopPath\winget_error.log"
 
@@ -243,57 +239,8 @@ function install_silent {
 }
 
 ### Debloating ###
-# Based on this gist: https://github.com/W4RH4WK/Debloat-Windows-10/blob/master/scripts/remove-default-apps.ps1
-function debloating {
-    Clear-Host
-    Write-Host -ForegroundColor Cyan "Removing bloatware..."
-    Foreach ($blt in $bloatware) {
-        $package = Get-AppxPackage -AllUsers $blt
-        if ($package -ne $null) {
-            Write-Host -ForegroundColor Red "Removing: $blt"
-            $package | Remove-AppxPackage
-        } else {
-            Write-Host "$blt not found. Skip..."
-        }
-    }
-    Pause
-}
 
 ### Register Taskjob ###
-function taskjob {
-    $taskname = 'WinGet AutoUpgrade & Cleanup'
-    Write-Host -ForegroundColor Yellow "Checking for Taskjob..."
-    if ($(Get-ScheduledTask -TaskName $taskname -ErrorAction SilentlyContinue).TaskName -eq $taskname) {
-        Write-Host -ForegroundColor Yellow "Taskjob already exists. Do you want to update to newer version? (y/n)"
-        $update = Read-Host
-        if ($update -eq 'y' -or $update -eq 'Y') {
-            Unregister-ScheduledTask -TaskName $taskname -Confirm:$False -ErrorAction SilentlyContinue
-            Write-Host -ForegroundColor Yellow "Taskjob updating..."
-            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls13
-            Invoke-WebRequest -Uri https://github.com/Kugane/winget/raw/main/WinGet%20AutoUpgrade%20%26%20Cleanup.xml -OutFile '$taskjob' 
-            Register-ScheduledTask -xml (Get-Content '$taskjob' | Out-String) -TaskName $taskname
-            Write-Host -ForegroundColor Green "Taskjob successfully updated."
-            Pause
-            Clear-Host
-        }
-        else {
-            Write-Warning "Taskjob not updated."
-            Pause
-            Clear-Host
-        }
-    }
-    else {
-        Write-Host -ForegroundColor Yellow "Installing taskjob..."
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls13
-        Invoke-WebRequest -Uri https://github.com/Kugane/winget/raw/main/WinGet%20AutoUpgrade%20%26%20Cleanup.xml -OutFile '$taskjob' 
-        Register-ScheduledTask -xml (Get-Content '$taskjob' | Out-String) -TaskName $taskname
-        Write-Host -ForegroundColor Green "Taskjob successfully installed."
-        Pause
-        Clear-Host
-    }
-    Pause
-    Clear-Host
-}
 
 ### Get List of installed Apps ###
 function get_list {
@@ -330,12 +277,13 @@ function menu {
     Write-Host
     Write-Host "2: Just install winget"
     Write-Host
-    Write-Host "3: Install Apps under graphical"
-    Write-Host "4: Install Apps under apps"
-    Write-Host "5: Remove bloatware"
+    Write-Host "3: Install Apps under apps"
     Write-Host
-    Write-Host "6: Install Taskjob for automatic updates"
-    Write-Host "7: Get List of all installed Apps"
+    Write-Host "4: Remove bloatware"
+    Write-Host
+    Write-Host "5: Install Taskjob for automatic updates"
+    Write-Host
+    Write-Host "6: Get List of all installed Apps"
     Write-Host
     Write-Host -ForegroundColor Magenta "0: Quit"
     Write-Host
@@ -361,23 +309,18 @@ function menu {
             }
             if ($actions -eq 3) {
                 install_winget
-                install_gui
-                finish
-            }
-            if ($actions -eq 4) {
-                install_winget
                 install_silent
                 finish
             }
-            if ($actions -eq 5) {
+            if ($actions -eq 4) {
                 debloating
                 finish
             }
-            if ($actions -eq 6) {
+            if ($actions -eq 5) {
                 taskjob
                 finish
             }
-            if ($actions -eq 7) {
+            if ($actions -eq 6) {
                 install_winget
                 get_list
             }
